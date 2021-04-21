@@ -36,12 +36,12 @@ func (p *Prototype) invokeMessage(msg string) error {
 		return fmt.Errorf("decode message request: %w", err)
 	}
 
-	object, ok := decodeObject([]byte(req.Object), p.Objects)
+	object, request, ok := decodeObjectAndRequest(req.Object, p.Objects, msg)
 	if !ok {
 		return fmt.Errorf("no object satisfied payload")
 	}
 
-	response, err := invoke(object, msg)
+	response, err := invoke(object, msg, request)
 	if err != nil {
 		return fmt.Errorf("invoke message %q: %w", msg, err)
 	}
@@ -65,7 +65,7 @@ func (p *Prototype) runInfo() error {
 		return fmt.Errorf("decode message request: %w", err)
 	}
 
-	object, ok := decodeObject([]byte(req.Object), p.Objects)
+	object, ok := decodeObject(req.Object, p.Objects)
 	if !ok {
 		return fmt.Errorf("no object satisfied payload")
 	}
@@ -91,7 +91,7 @@ func (p *Prototype) runInfo() error {
 // InfoRequest is the payload written to stdin for the default CMD.
 type InfoRequest struct {
 	// The object to act on.
-	Object json.RawMessage `json:"object"`
+	Object map[string]json.RawMessage `json:"object"`
 
 	// Path to a file into which the prototype must write its InfoResponse.
 	ResponsePath string `json:"response_path"`
@@ -116,7 +116,7 @@ type InfoResponse struct {
 // MessageRequest is the payload written to stdin for a message.
 type MessageRequest struct {
 	// The object to act on.
-	Object json.RawMessage `json:"object"`
+	Object map[string]json.RawMessage `json:"object"`
 
 	// Path to a file into which the prototype must write its InfoResponse.
 	ResponsePath string `json:"response_path"`

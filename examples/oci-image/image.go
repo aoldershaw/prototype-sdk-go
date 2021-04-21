@@ -15,11 +15,16 @@ type OCIImage struct {
 
 func (o OCIImage) Icon() string { return "mdi:docker" }
 
-func (o OCIImage) Build() error {
+func (o OCIImage) Build() ([]prototypesdk.MessageResponse, error) {
 	fmt.Println("building an image!", o.Context)
-	return nil
+	return nil, nil
 }
 
-func build(o prototypesdk.Object) ([]prototypesdk.MessageResponse, error) {
-	return nil, o.(*OCIImage).Build()
+type RunStageRequest struct {
+	Stage string `json:"stage" prototype:"required"`
+}
+
+func (o OCIImage) RunStage(request RunStageRequest) ([]prototypesdk.MessageResponse, error) {
+	fmt.Println("running stage", request.Stage)
+	return nil, nil
 }

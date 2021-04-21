@@ -6,7 +6,10 @@ import (
 
 func prototype() *prototypesdk.Prototype {
 	return prototypesdk.New(
-		prototypesdk.WithObject(OCIImage{}, prototypesdk.WithMessage("build", build)),
+		prototypesdk.WithObject(OCIImage{},
+			prototypesdk.WithMessage("build", (OCIImage).Build),
+			prototypesdk.WithMessage("run-stage", (OCIImage).RunStage),
+		),
 	)
 }
 
