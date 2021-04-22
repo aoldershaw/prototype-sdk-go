@@ -28,7 +28,7 @@ func (o objectWrapper) Messages() []MessageInfo {
 
 	// TODO: need a prepare function to give the inputs/outputs/caches
 	for _, msg := range o.messages {
-		msgs = append(msgs, MessageInfo{Name: msg.Name})
+		msgs = append(msgs, MessageInfo{Name: msg.name})
 	}
 
 	return msgs
@@ -37,9 +37,9 @@ func (o objectWrapper) Messages() []MessageInfo {
 type ObjectOption func(*objectWrapper)
 
 type message struct {
-	Name        string
-	RequestType reflect.Type
-	Execute     func(Object, interface{}) ([]MessageResponse, error)
+	name        string
+	requestType reflect.Type
+	execute     func(Object, interface{}) ([]MessageResponse, error)
 }
 
 func WithObject(object Object, options ...ObjectOption) Option {
@@ -48,7 +48,7 @@ func WithObject(object Object, options ...ObjectOption) Option {
 		for _, opt := range options {
 			opt(&wrapper)
 		}
-		p.Objects = append(p.Objects, wrapper)
+		p.objects = append(p.objects, wrapper)
 	}
 }
 
@@ -99,7 +99,7 @@ func WithMessage(name string, executeFunc interface{}) ObjectOption {
 			return response, err
 		}
 
-		o.messages = append(o.messages, message{Name: name, RequestType: requestType, Execute: execute})
+		o.messages = append(o.messages, message{name: name, requestType: requestType, execute: execute})
 	}
 }
 
@@ -109,8 +109,8 @@ type MessageInfo struct {
 
 func invoke(object objectWrapper, msg string, request interface{}) ([]MessageResponse, error) {
 	for _, m := range object.messages {
-		if m.Name == msg {
-			return m.Execute(object.object, request)
+		if m.name == msg {
+			return m.execute(object.object, request)
 		}
 	}
 	return nil, unsupportedMessageError{msg: msg, object: object.object}

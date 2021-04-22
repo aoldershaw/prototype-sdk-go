@@ -9,20 +9,20 @@ import (
 const InterfaceVersion = "1.0"
 
 type Prototype struct {
-	Objects []objectWrapper
+	objects []objectWrapper
 }
 
 type Option func(*Prototype)
 
-func New(options ...Option) *Prototype {
-	p := &Prototype{}
+func New(options ...Option) Prototype {
+	p := Prototype{}
 	for _, opt := range options {
-		opt(p)
+		opt(&p)
 	}
 	return p
 }
 
-func (p *Prototype) Run() error {
+func (p Prototype) Run() error {
 	if len(os.Args) > 1 {
 		return p.invokeMessage(os.Args[1])
 	} else {
@@ -30,13 +30,13 @@ func (p *Prototype) Run() error {
 	}
 }
 
-func (p *Prototype) invokeMessage(msg string) error {
+func (p Prototype) invokeMessage(msg string) error {
 	var req MessageRequest
 	if err := json.NewDecoder(os.Stdin).Decode(&req); err != nil {
 		return fmt.Errorf("decode message request: %w", err)
 	}
 
-	object, request, ok := decodeObjectAndRequest(req.Object, p.Objects, msg)
+	object, request, ok := decodeObjectAndRequest(req.Object, p.objects, msg)
 	if !ok {
 		return fmt.Errorf("no object satisfied payload")
 	}
@@ -59,13 +59,13 @@ func (p *Prototype) invokeMessage(msg string) error {
 	return nil
 }
 
-func (p *Prototype) runInfo() error {
+func (p Prototype) runInfo() error {
 	var req InfoRequest
 	if err := json.NewDecoder(os.Stdin).Decode(&req); err != nil {
 		return fmt.Errorf("decode message request: %w", err)
 	}
 
-	object, ok := decodeObject(req.Object, p.Objects)
+	object, ok := decodeObject(req.Object, p.objects)
 	if !ok {
 		return fmt.Errorf("no object satisfied payload")
 	}

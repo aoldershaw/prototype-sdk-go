@@ -68,12 +68,12 @@ func decodeSingle(payload []byte, dst interface{}) error {
 
 func decodeRequest(payload []byte, messages []message, messageName string) (interface{}, error) {
 	for _, msg := range messages {
-		if msg.Name == messageName {
-			if msg.RequestType == nil {
+		if msg.name == messageName {
+			if msg.requestType == nil {
 				// no request type for this message
 				return nil, nil
 			}
-			req := reflect.New(msg.RequestType).Interface()
+			req := reflect.New(msg.requestType).Interface()
 			err := decodeSingle(payload, req)
 			return reflect.ValueOf(req).Elem().Interface(), err
 		}

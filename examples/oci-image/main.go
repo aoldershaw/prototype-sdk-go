@@ -4,7 +4,7 @@ import (
 	prototypesdk "github.com/aoldershaw/prototype-sdk-go"
 )
 
-func prototype() *prototypesdk.Prototype {
+func prototype() prototypesdk.Prototype {
 	return prototypesdk.New(
 		prototypesdk.WithObject(OCIImage{},
 			prototypesdk.WithMessage("build", (OCIImage).Build),
