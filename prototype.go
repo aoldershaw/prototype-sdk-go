@@ -41,7 +41,7 @@ func (p Prototype) invokeMessage(msg string) error {
 		return fmt.Errorf("no object satisfied payload")
 	}
 
-	response, err := invoke(object, msg, request)
+	responses, err := invoke(object, msg, request)
 	if err != nil {
 		return fmt.Errorf("invoke message %q: %w", msg, err)
 	}
@@ -52,10 +52,12 @@ func (p Prototype) invokeMessage(msg string) error {
 	}
 	defer responseFile.Close()
 
-	if err := json.NewEncoder(responseFile).Encode(response); err != nil {
-		return fmt.Errorf("write response: %w", err)
+	encoder := json.NewEncoder(responseFile)
+	for _, response := range responses {
+		if err := encoder.Encode(response); err != nil {
+			return fmt.Errorf("write response: %w", err)
+		}
 	}
-
 	return nil
 }
 
