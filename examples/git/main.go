@@ -14,6 +14,7 @@ func Prototype() prototype.Prototype {
 			prototype.WithMessage("put", (Branch).Push, (Branch).PushConfig),
 		),
 		prototype.WithObject(Commit{}),
+		prototype.WithIcon("mdi:git"),
 	)
 }
 

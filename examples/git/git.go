@@ -12,8 +12,6 @@ type Repository struct {
 	PrivateKey string `json:"private_key"`
 }
 
-func (r Repository) Icon() string { return "mdi:git" }
-
 type ListBranchesRequest struct {
 	BranchFilter string `json:"branch_filter"`
 }
@@ -30,8 +28,6 @@ type Branch struct {
 	Repository
 	Branch string `json:"branch" prototype:"required"`
 }
-
-func (b Branch) Icon() string { return "mdi:source-branch" }
 
 type ListCommitsRequest struct {
 	Paths []string `json:"paths"`
@@ -70,5 +66,3 @@ type Commit struct {
 	Branch
 	Ref string `json:"ref" prototype:"required"`
 }
-
-func (c Commit) Icon() string { return "mdi:source-commit" }

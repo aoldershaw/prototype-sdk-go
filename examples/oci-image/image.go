@@ -15,8 +15,6 @@ type OCIImage struct {
 	Output         string            `json:"output" prototype:"required"`
 }
 
-func (o OCIImage) Icon() string { return "mdi:docker" }
-
 func (o OCIImage) Build() ([]prototype.MessageResponse, error) {
 	fmt.Println("building an image!", o.Context)
 	return nil, nil

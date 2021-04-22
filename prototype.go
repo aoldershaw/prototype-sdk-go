@@ -11,6 +11,7 @@ const InterfaceVersion = "1.0"
 
 type Prototype struct {
 	objects []objectWrapper
+	Icon    string
 }
 
 type Option func(*Prototype)
@@ -21,6 +22,12 @@ func New(options ...Option) Prototype {
 		opt(&p)
 	}
 	return p
+}
+
+func WithIcon(icon string) Option {
+	return func(p *Prototype) {
+		p.Icon = icon
+	}
 }
 
 func (p Prototype) Run() error {
@@ -77,12 +84,6 @@ func (p Prototype) runInfo() error {
 
 	invocations := decodePossibleInvocations(req.Object, p.objects, "")
 
-	// TODO: disallow ambiguous object type?
-	var icon string
-	if len(invocations) > 0 {
-		icon = invocations[0].object.Icon()
-	}
-
 	messages := []MessageInfo{}
 	for _, invocation := range invocations {
 		msgInfo, err := invocation.messageInfo()
@@ -96,7 +97,7 @@ func (p Prototype) runInfo() error {
 
 	response := InfoResponse{
 		InterfaceVersion: InterfaceVersion,
-		Icon:             icon,
+		Icon:             p.Icon,
 		Messages:         messages,
 	}
 

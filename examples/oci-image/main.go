@@ -10,6 +10,7 @@ func Prototype() prototype.Prototype {
 			prototype.WithMessage("build", (OCIImage).Build, (OCIImage).Config),
 			prototype.WithMessage("run-stage", (OCIImage).RunStage, (OCIImage).Config),
 		),
+		prototype.WithIcon("mdi:docker"),
 	)
 }
 

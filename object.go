@@ -14,9 +14,8 @@ func (e unsupportedMessageError) Error() string {
 	return fmt.Sprintf("message %q is not supported by object %+v", e.msg, e.object)
 }
 
-type Object interface {
-	Icon() string
-}
+type Object interface{}
+type Request interface{}
 
 type objectWrapper struct {
 	object   Object
@@ -36,7 +35,7 @@ func (o objectWrapper) Messages() []MessageInfo {
 type invokableMessage struct {
 	msg     message
 	object  Object
-	request interface{}
+	request Request
 }
 
 func (i invokableMessage) invoke() ([]MessageResponse, error) {
@@ -56,8 +55,8 @@ type ObjectOption func(*objectWrapper)
 type message struct {
 	name        string
 	requestType reflect.Type
-	execute     func(Object, interface{}) ([]MessageResponse, error)
-	config      func(Object, interface{}) (Config, error)
+	execute     func(Object, Request) ([]MessageResponse, error)
+	config      func(Object, Request) (Config, error)
 }
 
 func WithObject(object Object, options ...ObjectOption) Option {
@@ -118,7 +117,7 @@ func WithMessage(name string, executeFunc, configFunc interface{}) ObjectOption 
 	}
 }
 
-func validateExecuteFunc(objectType reflect.Type, executeFunc interface{}) (func(Object, interface{}) ([]MessageResponse, error), reflect.Type, error) {
+func validateExecuteFunc(objectType reflect.Type, executeFunc interface{}) (func(Object, Request) ([]MessageResponse, error), reflect.Type, error) {
 	rt := reflect.TypeOf(executeFunc)
 	if (rt.NumIn() != 1 && rt.NumIn() != 2) ||
 		!objectType.AssignableTo(rt.In(0)) {
@@ -133,7 +132,7 @@ func validateExecuteFunc(objectType reflect.Type, executeFunc interface{}) (func
 		requestType = rt.In(1)
 	}
 
-	return func(object Object, request interface{}) ([]MessageResponse, error) {
+	return func(object Object, request Request) ([]MessageResponse, error) {
 		var args []reflect.Value
 		if rt.NumIn() == 1 {
 			args = []reflect.Value{reflect.ValueOf(object)}
@@ -152,7 +151,7 @@ func validateExecuteFunc(objectType reflect.Type, executeFunc interface{}) (func
 	}, requestType, nil
 }
 
-func validateConfigFunc(objectType, requestType reflect.Type, configFunc interface{}) (func(Object, interface{}) (Config, error), error) {
+func validateConfigFunc(objectType, requestType reflect.Type, configFunc interface{}) (func(Object, Request) (Config, error), error) {
 	rt := reflect.TypeOf(configFunc)
 	if (rt.NumIn() != 1 && rt.NumIn() != 2) ||
 		!objectType.AssignableTo(rt.In(0)) ||
@@ -163,7 +162,7 @@ func validateConfigFunc(objectType, requestType reflect.Type, configFunc interfa
 		!reflect.TypeOf(Config{}).AssignableTo(rt.Out(0)) {
 		return nil, fmt.Errorf("the function must have 1 or 2 return types (prototype.Config, and optionally, error)")
 	}
-	return func(object Object, request interface{}) (Config, error) {
+	return func(object Object, request Request) (Config, error) {
 		var args []reflect.Value
 		if rt.NumIn() == 1 {
 			args = []reflect.Value{reflect.ValueOf(object)}
