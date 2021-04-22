@@ -1,4 +1,4 @@
-package prototypesdk
+package prototype
 
 import (
 	"fmt"

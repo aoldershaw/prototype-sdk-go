@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	prototypesdk "github.com/aoldershaw/prototype-sdk-go"
+	prototype "github.com/aoldershaw/prototype-sdk-go"
 )
 
 type OCIImage struct {
@@ -15,7 +15,7 @@ type OCIImage struct {
 
 func (o OCIImage) Icon() string { return "mdi:docker" }
 
-func (o OCIImage) Build() ([]prototypesdk.MessageResponse, error) {
+func (o OCIImage) Build() ([]prototype.MessageResponse, error) {
 	fmt.Println("building an image!", o.Context)
 	return nil, nil
 }
@@ -24,7 +24,7 @@ type RunStageRequest struct {
 	Stage string `json:"stage" prototype:"required"`
 }
 
-func (o OCIImage) RunStage(request RunStageRequest) ([]prototypesdk.MessageResponse, error) {
+func (o OCIImage) RunStage(request RunStageRequest) ([]prototype.MessageResponse, error) {
 	fmt.Println("running stage", request.Stage)
 	return nil, nil
 }

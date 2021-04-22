@@ -1,4 +1,4 @@
-package prototypesdk
+package prototype
 
 import (
 	"encoding/json"
@@ -13,7 +13,7 @@ type requiredFieldNotSetError struct {
 }
 
 func (e requiredFieldNotSetError) Error() string {
-	return fmt.Sprintf("prototypesdk: required field %q is unset", e.name)
+	return fmt.Sprintf("prototype: required field %q is unset", e.name)
 }
 
 func decodeObjectAndRequest(objectJSON map[string]json.RawMessage, objects []objectWrapper, msg string) (objectWrapper, interface{}, bool) {

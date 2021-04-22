@@ -1,20 +1,20 @@
 package main
 
 import (
-	prototypesdk "github.com/aoldershaw/prototype-sdk-go"
+	prototype "github.com/aoldershaw/prototype-sdk-go"
 )
 
-func prototype() prototypesdk.Prototype {
-	return prototypesdk.New(
-		prototypesdk.WithObject(OCIImage{},
-			prototypesdk.WithMessage("build", (OCIImage).Build),
-			prototypesdk.WithMessage("run-stage", (OCIImage).RunStage),
+func Prototype() prototype.Prototype {
+	return prototype.New(
+		prototype.WithObject(OCIImage{},
+			prototype.WithMessage("build", (OCIImage).Build),
+			prototype.WithMessage("run-stage", (OCIImage).RunStage),
 		),
 	)
 }
 
 func main() {
-	if err := prototype().Run(); err != nil {
+	if err := Prototype().Run(); err != nil {
 		panic(err)
 	}
 }

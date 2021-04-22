@@ -1,24 +1,24 @@
 package main
 
 import (
-	prototypesdk "github.com/aoldershaw/prototype-sdk-go"
+	prototype "github.com/aoldershaw/prototype-sdk-go"
 )
 
-func prototype() prototypesdk.Prototype {
-	return prototypesdk.New(
-		prototypesdk.WithObject(Repository{},
-			prototypesdk.WithMessage("list", (Repository).ListBranches),
+func Prototype() prototype.Prototype {
+	return prototype.New(
+		prototype.WithObject(Repository{},
+			prototype.WithMessage("list", (Repository).ListBranches),
 		),
-		prototypesdk.WithObject(Branch{},
-			prototypesdk.WithMessage("list", (Branch).ListCommits),
-			prototypesdk.WithMessage("put", (Branch).Push),
+		prototype.WithObject(Branch{},
+			prototype.WithMessage("list", (Branch).ListCommits),
+			prototype.WithMessage("put", (Branch).Push),
 		),
-		prototypesdk.WithObject(Commit{}),
+		prototype.WithObject(Commit{}),
 	)
 }
 
 func main() {
-	if err := prototype().Run(); err != nil {
+	if err := Prototype().Run(); err != nil {
 		panic(err)
 	}
 }
