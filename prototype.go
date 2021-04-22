@@ -46,7 +46,7 @@ func (p Prototype) invokeMessage(msg string) error {
 		return fmt.Errorf("invoke message %q: %w", msg, err)
 	}
 
-	responseFile, err := os.OpenFile(req.ResponsePath, os.O_CREATE|os.O_WRONLY, 0644)
+	responseFile, err := os.OpenFile(req.ResponsePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		return fmt.Errorf("open response file: %w", err)
 	}
@@ -76,7 +76,7 @@ func (p Prototype) runInfo() error {
 		Messages:         object.Messages(),
 	}
 
-	responseFile, err := os.OpenFile(req.ResponsePath, os.O_CREATE|os.O_WRONLY, 0644)
+	responseFile, err := os.OpenFile(req.ResponsePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		return fmt.Errorf("open response file: %w", err)
 	}
