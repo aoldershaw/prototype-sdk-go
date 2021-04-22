@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 
 	prototype "github.com/aoldershaw/prototype-sdk-go"
@@ -51,6 +52,18 @@ type PushRequest struct {
 func (b Branch) Push(request PushRequest) ([]prototype.MessageResponse, error) {
 	fmt.Println("pushing a new commit...", request)
 	return nil, nil
+}
+
+func (b Branch) PushConfig(request PushRequest) (prototype.Config, error) {
+	if b.Branch == "master" {
+		return prototype.Config{}, errors.New("can't push to master")
+	}
+	return prototype.Config{
+		Inputs: []prototype.Input{{
+			Name: request.Repository,
+			Path: "repository",
+		}},
+	}, nil
 }
 
 type Commit struct {

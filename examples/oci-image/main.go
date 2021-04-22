@@ -7,8 +7,8 @@ import (
 func Prototype() prototype.Prototype {
 	return prototype.New(
 		prototype.WithObject(OCIImage{},
-			prototype.WithMessage("build", (OCIImage).Build),
-			prototype.WithMessage("run-stage", (OCIImage).RunStage),
+			prototype.WithMessage("build", (OCIImage).Build, (OCIImage).Config),
+			prototype.WithMessage("run-stage", (OCIImage).RunStage, (OCIImage).Config),
 		),
 	)
 }

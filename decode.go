@@ -16,46 +16,52 @@ func (e requiredFieldNotSetError) Error() string {
 	return fmt.Sprintf("prototype: required field %q is unset", e.name)
 }
 
-func decodeObjectAndRequest(objectJSON map[string]json.RawMessage, objects []objectWrapper, msg string) (objectWrapper, interface{}, bool) {
+func decodePossibleInvocations(objectJSON map[string]json.RawMessage, objects []objectWrapper, messageName string) []invokableMessage {
 	payload, err := json.Marshal(objectJSON)
 	if err != nil {
 		panic(err)
 	}
 
-	// Loop in reverse with the assumption that the most highly specified
-	// objects appear later.
-	// TODO: is there a better way?
-	for i := len(objects) - 1; i >= 0; i-- {
-		rt := reflect.TypeOf(objects[i].object)
+	var invokableMessages []invokableMessage
+	for _, wrapper := range objects {
+		rt := reflect.TypeOf(wrapper.object)
 		object := reflect.New(rt).Interface()
 		err := decodeSingle(payload, object)
 		if err != nil {
 			// skip over when fail to decode object
 			continue
 		}
-		// TODO: disallow using the same field in both object and request?
-		// disallow unused fields (at least when msg != "")?
-		var request interface{}
-		if msg != "" {
-			request, err = decodeRequest(payload, objects[i].messages, msg)
-			if err != nil {
-				// skip over when fail to decode request
-				// TODO: should this actually fail instead?
+		jsonWithoutObject := jsonDiff(objectJSON, object)
+		payloadWithoutObject, err := json.Marshal(jsonWithoutObject)
+		if err != nil {
+			panic(fmt.Sprintf("marshal JSON: %v", err))
+		}
+		for _, msg := range wrapper.messages {
+			if messageName != "" && msg.name != messageName {
+				// we are invoking a specific message, and it doesn't match the current message, so skip
 				continue
 			}
+			request, err := decodeRequest(payloadWithoutObject, msg)
+			if err != nil {
+				// skip over when fail to decode request
+				continue
+			}
+			leftoverJSON := jsonDiff(jsonWithoutObject, request)
+			if len(leftoverJSON) > 0 {
+				// skip over when there are unused keys
+				// TODO: is this what we want for the info endpoint? when used
+				// with the run step, it's fine, since it'll have the request
+				// as well - but not sure how else concourse will use it
+				continue
+			}
+			invokableMessages = append(invokableMessages, invokableMessage{
+				msg:     msg,
+				object:  dereference(object).(Object),
+				request: request,
+			})
 		}
-		return objectWrapper{
-			// TODO: lol how are you supposed to avoid getting a pointer to the type?
-			object:   reflect.ValueOf(object).Elem().Interface().(Object),
-			messages: objects[i].messages,
-		}, request, true
 	}
-	return objectWrapper{}, nil, false
-}
-
-func decodeObject(objectJSON map[string]json.RawMessage, objects []objectWrapper) (objectWrapper, bool) {
-	object, _, ok := decodeObjectAndRequest(objectJSON, objects, "")
-	return object, ok
+	return invokableMessages
 }
 
 func decodeSingle(payload []byte, dst interface{}) error {
@@ -66,20 +72,14 @@ func decodeSingle(payload []byte, dst interface{}) error {
 	return reflectwalk.Walk(dst, requiredTagWalker{})
 }
 
-func decodeRequest(payload []byte, messages []message, messageName string) (interface{}, error) {
-	for _, msg := range messages {
-		if msg.name == messageName {
-			if msg.requestType == nil {
-				// no request type for this message
-				return nil, nil
-			}
-			req := reflect.New(msg.requestType).Interface()
-			err := decodeSingle(payload, req)
-			return reflect.ValueOf(req).Elem().Interface(), err
-		}
+func decodeRequest(payload []byte, message message) (interface{}, error) {
+	if message.requestType == nil {
+		// no request type for this message
+		return nil, nil
 	}
-	// unsupported message - will be handled later on
-	return nil, nil
+	req := reflect.New(message.requestType).Interface()
+	err := decodeSingle(payload, req)
+	return dereference(req), err
 }
 
 type requiredTagWalker struct{}
@@ -93,4 +93,27 @@ func (requiredTagWalker) StructField(field reflect.StructField, rv reflect.Value
 		return requiredFieldNotSetError{name: field.Name}
 	}
 	return nil
+}
+
+func jsonDiff(full map[string]json.RawMessage, obj interface{}) map[string]json.RawMessage {
+	objPayload, err := json.Marshal(obj)
+	if err != nil {
+		panic(err)
+	}
+	var subtractKeys map[string]json.RawMessage
+	if err := json.Unmarshal(objPayload, &subtractKeys); err != nil {
+		panic(err)
+	}
+	diff := map[string]json.RawMessage{}
+	for k, v := range full {
+		if _, ok := subtractKeys[k]; !ok {
+			diff[k] = v
+		}
+	}
+	return diff
+}
+
+func dereference(i interface{}) interface{} {
+	// TODO: lol how are you supposed to avoid getting a pointer to the type?
+	return reflect.ValueOf(i).Elem().Interface()
 }

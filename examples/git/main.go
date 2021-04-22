@@ -7,11 +7,11 @@ import (
 func Prototype() prototype.Prototype {
 	return prototype.New(
 		prototype.WithObject(Repository{},
-			prototype.WithMessage("list", (Repository).ListBranches),
+			prototype.WithMessage("list", (Repository).ListBranches, prototype.EmptyConfig),
 		),
 		prototype.WithObject(Branch{},
-			prototype.WithMessage("list", (Branch).ListCommits),
-			prototype.WithMessage("put", (Branch).Push),
+			prototype.WithMessage("list", (Branch).ListCommits, prototype.EmptyConfig),
+			prototype.WithMessage("put", (Branch).Push, (Branch).PushConfig),
 		),
 		prototype.WithObject(Commit{}),
 	)

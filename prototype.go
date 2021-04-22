@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"reflect"
 )
 
 const InterfaceVersion = "1.0"
@@ -36,12 +37,19 @@ func (p Prototype) invokeMessage(msg string) error {
 		return fmt.Errorf("decode message request: %w", err)
 	}
 
-	object, request, ok := decodeObjectAndRequest(req.Object, p.objects, msg)
-	if !ok {
+	invocations := decodePossibleInvocations(req.Object, p.objects, msg)
+	if len(invocations) == 0 {
 		return fmt.Errorf("no object satisfied payload")
 	}
+	if len(invocations) > 1 {
+		var satisfiableTypes []reflect.Type
+		for _, invocation := range invocations {
+			satisfiableTypes = append(satisfiableTypes, reflect.TypeOf(invocation.object))
+		}
+		return fmt.Errorf("object is ambiguous - satisfies types %v", satisfiableTypes)
+	}
 
-	responses, err := invoke(object, msg, request)
+	responses, err := invocations[0].invoke()
 	if err != nil {
 		return fmt.Errorf("invoke message %q: %w", msg, err)
 	}
@@ -67,15 +75,29 @@ func (p Prototype) runInfo() error {
 		return fmt.Errorf("decode message request: %w", err)
 	}
 
-	object, ok := decodeObject(req.Object, p.objects)
-	if !ok {
-		return fmt.Errorf("no object satisfied payload")
+	invocations := decodePossibleInvocations(req.Object, p.objects, "")
+
+	// TODO: disallow ambiguous object type?
+	var icon string
+	if len(invocations) > 0 {
+		icon = invocations[0].object.Icon()
+	}
+
+	messages := []MessageInfo{}
+	for _, invocation := range invocations {
+		msgInfo, err := invocation.messageInfo()
+		if err != nil {
+			// fail to configure => object is semantically invalid
+			// TODO: how can we surface this (and other decoding errors) to users?
+			continue
+		}
+		messages = append(messages, msgInfo)
 	}
 
 	response := InfoResponse{
 		InterfaceVersion: InterfaceVersion,
-		Icon:             object.object.Icon(),
-		Messages:         object.Messages(),
+		Icon:             icon,
+		Messages:         messages,
 	}
 
 	responseFile, err := os.OpenFile(req.ResponsePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
@@ -112,7 +134,12 @@ type InfoResponse struct {
 	Icon string `json:"icon,omitempty"`
 
 	// The messages supported by the object.
-	Messages []MessageInfo `json:"messages,omitempty"`
+	Messages []MessageInfo `json:"messages"`
+}
+
+type MessageInfo struct {
+	Name   string `json:"name"`
+	Config Config `json:"config"`
 }
 
 // MessageRequest is the payload written to stdin for a message.
