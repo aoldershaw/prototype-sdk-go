@@ -84,15 +84,9 @@ func (p Prototype) runInfo() error {
 
 	invocations := decodePossibleInvocations(req.Object, p.objects, "")
 
-	messages := []MessageInfo{}
-	for _, invocation := range invocations {
-		msgInfo, err := invocation.messageInfo()
-		if err != nil {
-			// fail to configure => object is semantically invalid
-			// TODO: how can we surface this (and other decoding errors) to users?
-			continue
-		}
-		messages = append(messages, msgInfo)
+	messages := make([]MessageInfo, len(invocations))
+	for i, invocation := range invocations {
+		messages[i] = invocation.messageInfo()
 	}
 
 	response := InfoResponse{
@@ -139,8 +133,7 @@ type InfoResponse struct {
 }
 
 type MessageInfo struct {
-	Name   string `json:"name"`
-	Config Config `json:"config"`
+	Name string `json:"name"`
 }
 
 // MessageRequest is the payload written to stdin for a message.

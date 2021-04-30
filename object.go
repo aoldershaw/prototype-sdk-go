@@ -22,16 +22,6 @@ type objectWrapper struct {
 	messages []message
 }
 
-func (o objectWrapper) Messages() []MessageInfo {
-	var msgs []MessageInfo
-
-	for _, msg := range o.messages {
-		msgs = append(msgs, MessageInfo{Name: msg.name})
-	}
-
-	return msgs
-}
-
 type invokableMessage struct {
 	msg     message
 	object  Object
@@ -42,12 +32,8 @@ func (i invokableMessage) invoke() ([]MessageResponse, error) {
 	return i.msg.execute(i.object, i.request)
 }
 
-func (i invokableMessage) messageInfo() (MessageInfo, error) {
-	config, err := i.msg.config(i.object, i.request)
-	if err != nil {
-		return MessageInfo{}, err
-	}
-	return MessageInfo{Name: i.msg.name, Config: config}, nil
+func (i invokableMessage) messageInfo() MessageInfo {
+	return MessageInfo{Name: i.msg.name}
 }
 
 type ObjectOption func(*objectWrapper)
@@ -56,7 +42,6 @@ type message struct {
 	name        string
 	requestType reflect.Type
 	execute     func(Object, Request) ([]MessageResponse, error)
-	config      func(Object, Request) (Config, error)
 }
 
 func WithObject(object Object, options ...ObjectOption) Option {
@@ -81,20 +66,7 @@ func WithObject(object Object, options ...ObjectOption) Option {
 //
 // ...where ConcreteObject must match the Object the message is for, and
 // ConcreteRequest may be any type.
-//
-// Similarly, configFunc must have one of the following signatures:
-//
-// * func(ConcreteObject) Config
-// * func(ConcreteObject) (Config, error)
-// * func(ConcreteObject, ConcreteRequest) Config
-// * func(ConcreteObject, ConcreteRequest) (Config, error)
-//
-// configFunc should return an error if the provided object/request is
-// syntactically valid but semantically invalid.
-//
-// If both executeFunc and configFunc specify a ConcreteRequest, they must be
-// the same type.
-func WithMessage(name string, executeFunc, configFunc interface{}) ObjectOption {
+func WithMessage(name string, executeFunc interface{}) ObjectOption {
 	return func(o *objectWrapper) {
 		objectType := reflect.TypeOf(o.object)
 
@@ -103,16 +75,10 @@ func WithMessage(name string, executeFunc, configFunc interface{}) ObjectOption 
 			panic(err)
 		}
 
-		config, err := validateConfigFunc(objectType, requestType, configFunc)
-		if err != nil {
-			panic(err)
-		}
-
 		o.messages = append(o.messages, message{
 			name:        name,
 			requestType: requestType,
 			execute:     execute,
-			config:      config,
 		})
 	}
 }
@@ -149,36 +115,6 @@ func validateExecuteFunc(objectType reflect.Type, executeFunc interface{}) (func
 		}
 		return response, err
 	}, requestType, nil
-}
-
-func validateConfigFunc(objectType, requestType reflect.Type, configFunc interface{}) (func(Object, Request) (Config, error), error) {
-	rt := reflect.TypeOf(configFunc)
-	if (rt.NumIn() != 1 && rt.NumIn() != 2) ||
-		!objectType.AssignableTo(rt.In(0)) ||
-		(rt.NumIn() == 2 && !requestType.AssignableTo(rt.In(1))) {
-		return nil, fmt.Errorf("the function must have 1 or 2 arguments (%s, and optionally %s)", objectType, requestType)
-	}
-	if (rt.NumOut() != 1 && rt.NumOut() != 2) ||
-		!reflect.TypeOf(Config{}).AssignableTo(rt.Out(0)) {
-		return nil, fmt.Errorf("the function must have 1 or 2 return types (prototype.Config, and optionally, error)")
-	}
-	return func(object Object, request Request) (Config, error) {
-		var args []reflect.Value
-		if rt.NumIn() == 1 {
-			args = []reflect.Value{reflect.ValueOf(object)}
-		} else {
-			args = []reflect.Value{reflect.ValueOf(object), reflect.ValueOf(request)}
-		}
-
-		result := reflect.ValueOf(configFunc).Call(args)
-
-		config := result[0].Interface().(Config)
-		var err error
-		if rt.NumOut() == 2 {
-			err, _ = result[1].Interface().(error)
-		}
-		return config, err
-	}, nil
 }
 
 func invoke(object objectWrapper, msg string, request interface{}) ([]MessageResponse, error) {
