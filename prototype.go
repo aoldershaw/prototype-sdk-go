@@ -1,9 +1,11 @@
 package prototype
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 )
 
@@ -149,11 +151,37 @@ type MessageRequest struct {
 // by the message. Multiple responses may be written to the same file,
 // concatenated as a JSON stream.
 type MessageResponse struct {
-	// The object.
+	// The object to return. May contain literal data and/or artifacts (using
+	// the Artifact type).
 	Object Object `json:"object"`
 
 	// Metadata to associate with the object. Shown to the user.
 	Metadata []MetadataField `json:"metadata,omitempty"`
+}
+
+// Artifact is a relative path relative to the working directory. It cannot go
+// up a directory (i.e. must be within the working directory or any child
+// directories of the working directory). If emitted in the Object of the
+// MessageResponse, Artifacts may be used in pipelines as inputs to other
+// prototypes/tasks/resources.
+type Artifact string
+
+func (a Artifact) MarshalJSON() ([]byte, error) {
+	path := filepath.Clean(string(a))
+	return json.Marshal(map[string]string{"artifact": path})
+}
+
+func (a *Artifact) UnmarshalJSON(payload []byte) error {
+	var dst struct {
+		Artifact string `json:"artifact"`
+	}
+	dec := json.NewDecoder(bytes.NewReader(payload))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&dst); err != nil {
+		return err
+	}
+	*a = Artifact(dst.Artifact)
+	return nil
 }
 
 // MetadataField represents a named bit of metadata associated to an object.

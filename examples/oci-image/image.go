@@ -10,12 +10,17 @@ type OCIImage struct {
 	Context        string            `json:"context" prototype:"required"`
 	ContextInputs  map[string]string `json:"context_inputs,omitempty"`
 	DockerfilePath string            `json:"dockerfile,omitempty"`
-	Output         string            `json:"output" prototype:"required"`
+}
+
+type Response struct {
+	Image prototype.Artifact `json:"image"`
 }
 
 func (o OCIImage) Build() ([]prototype.MessageResponse, error) {
 	fmt.Println("building an image!", o.Context)
-	return nil, nil
+	return []prototype.MessageResponse{
+		{Object: Response{Image: "./image"}},
+	}, nil
 }
 
 type RunStageRequest struct {
