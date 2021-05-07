@@ -32,8 +32,8 @@ func (i invokableMessage) invoke() ([]MessageResponse, error) {
 	return i.msg.execute(i.object, i.request)
 }
 
-func (i invokableMessage) messageInfo() MessageInfo {
-	return MessageInfo{Name: i.msg.name}
+func (i invokableMessage) name() string {
+	return i.msg.name
 }
 
 type ObjectOption func(*objectWrapper)

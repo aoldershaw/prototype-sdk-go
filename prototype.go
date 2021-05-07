@@ -86,9 +86,9 @@ func (p Prototype) runInfo() error {
 
 	invocations := decodePossibleInvocations(req.Object, p.objects, "")
 
-	messages := make([]MessageInfo, len(invocations))
+	messages := make([]string, len(invocations))
 	for i, invocation := range invocations {
-		messages[i] = invocation.messageInfo()
+		messages[i] = invocation.name()
 	}
 
 	response := InfoResponse{
@@ -131,11 +131,7 @@ type InfoResponse struct {
 	Icon string `json:"icon,omitempty"`
 
 	// The messages supported by the object.
-	Messages []MessageInfo `json:"messages"`
-}
-
-type MessageInfo struct {
-	Name string `json:"name"`
+	Messages []string `json:"messages"`
 }
 
 // MessageRequest is the payload written to stdin for a message.
