@@ -166,7 +166,7 @@ type MessageRequest struct {
 type MessageResponse struct {
 	// The object to return. May contain literal data and/or artifacts (using
 	// the Artifact type).
-	Object Object `json:"object"`
+	Object map[string]interface{} `json:"object"`
 
 	// Metadata to associate with the object. Shown to the user.
 	Metadata []MetadataField `json:"metadata,omitempty"`

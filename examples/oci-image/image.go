@@ -12,14 +12,12 @@ type OCIImage struct {
 	DockerfilePath string            `json:"dockerfile,omitempty"`
 }
 
-type Response struct {
-	Image prototype.Artifact `json:"image"`
-}
-
 func (o OCIImage) Build() ([]prototype.MessageResponse, error) {
 	fmt.Println("building an image!", o.Context)
-	return []prototype.MessageResponse{
-		{Object: Response{Image: "./image"}},
+	return []prototype.MessageResponse{{
+		Object: map[string]interface{}{
+			"image": prototype.Artifact("./image"),
+		}},
 	}, nil
 }
 

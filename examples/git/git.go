@@ -18,8 +18,8 @@ type ListBranchesRequest struct {
 func (r Repository) ListBranches(request ListBranchesRequest) ([]prototype.MessageResponse, error) {
 	fmt.Println("listing branches...", request)
 	return []prototype.MessageResponse{
-		{Object: Branch{Repository: r, Branch: "master"}},
-		{Object: Branch{Repository: r, Branch: "dev"}},
+		{Object: map[string]interface{}{"branch": "master"}},
+		{Object: map[string]interface{}{"branch": "dev"}},
 	}, nil
 }
 
@@ -35,8 +35,8 @@ type ListCommitsRequest struct {
 func (b Branch) ListCommits(request ListCommitsRequest) ([]prototype.MessageResponse, error) {
 	fmt.Println("listing commits in branch "+b.Branch+"...", request)
 	return []prototype.MessageResponse{
-		{Object: Commit{Branch: b, Ref: "abcdef"}},
-		{Object: Commit{Branch: b, Ref: "ghijkl"}},
+		{Object: map[string]interface{}{"ref": "abcdef"}},
+		{Object: map[string]interface{}{"ref": "ghijkl"}},
 	}, nil
 }
 
