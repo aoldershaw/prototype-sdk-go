@@ -16,10 +16,10 @@ func (e requiredFieldNotSetError) Error() string {
 	return fmt.Sprintf("prototype: required field %q is unset", e.name)
 }
 
-func decodePossibleInvocations(objectJSON map[string]json.RawMessage, objects []objectWrapper, messageName string) []invokableMessage {
-	payload, err := json.Marshal(objectJSON)
+func decodePossibleInvocations(object map[string]interface{}, objects []objectWrapper, messageName string) ([]invokableMessage, error) {
+	fullObjectJSON, payload, err := rawJSONObject(object)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("re-marshal object: %w", err)
 	}
 
 	var invokableMessages []invokableMessage
@@ -31,10 +31,14 @@ func decodePossibleInvocations(objectJSON map[string]json.RawMessage, objects []
 			// skip over when fail to decode object
 			continue
 		}
-		jsonWithoutObject := jsonDiff(objectJSON, object)
+		subObjectJSON, _, err := rawJSONObject(object)
+		if err != nil {
+			return nil, fmt.Errorf("invalid sub-object: %w", err)
+		}
+		jsonWithoutObject := jsonDiff(fullObjectJSON, subObjectJSON)
 		payloadWithoutObject, err := json.Marshal(jsonWithoutObject)
 		if err != nil {
-			panic(fmt.Sprintf("marshal JSON: %v", err))
+			return nil, fmt.Errorf("re-marshal sub-object: %w", err)
 		}
 		for _, msg := range wrapper.messages {
 			if messageName != "" && msg.name != messageName {
@@ -46,9 +50,13 @@ func decodePossibleInvocations(objectJSON map[string]json.RawMessage, objects []
 				// skip over when fail to decode request
 				continue
 			}
-			leftoverJSON := jsonDiff(jsonWithoutObject, request)
-			if len(leftoverJSON) > 0 {
-				// skip over when there are unused keys
+			requestJSON, _, err := rawJSONObject(request)
+			if err != nil {
+				return nil, fmt.Errorf("invalid request object: %w", err)
+			}
+			leftoverJSON := jsonDiff(jsonWithoutObject, requestJSON)
+			if !isJSONObjectEmpty(leftoverJSON) {
+				// skip over when there are unused entries in the JSON
 				// TODO: is this what we want for the info endpoint? when used
 				// with the run step, it's fine, since it'll have the request
 				// as well - but not sure how else concourse will use it
@@ -61,7 +69,7 @@ func decodePossibleInvocations(objectJSON map[string]json.RawMessage, objects []
 			})
 		}
 	}
-	return invokableMessages
+	return invokableMessages, nil
 }
 
 func decodeSingle(payload []byte, dst interface{}) error {
@@ -79,7 +87,10 @@ func decodeRequest(payload []byte, message message) (interface{}, error) {
 	}
 	req := reflect.New(message.requestType).Interface()
 	err := decodeSingle(payload, req)
-	return dereference(req), err
+	if err != nil {
+		return nil, err
+	}
+	return dereference(req), nil
 }
 
 type requiredTagWalker struct{}
@@ -95,15 +106,19 @@ func (requiredTagWalker) StructField(field reflect.StructField, rv reflect.Value
 	return nil
 }
 
-func jsonDiff(full map[string]json.RawMessage, obj interface{}) map[string]json.RawMessage {
+func rawJSONObject(obj interface{}) (map[string]json.RawMessage, []byte, error) {
 	objPayload, err := json.Marshal(obj)
 	if err != nil {
-		panic(err)
+		return nil, nil, err
 	}
-	var subtractKeys map[string]json.RawMessage
-	if err := json.Unmarshal(objPayload, &subtractKeys); err != nil {
-		panic(err)
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(objPayload, &raw); err != nil {
+		return nil, nil, err
 	}
+	return raw, objPayload, nil
+}
+
+func jsonDiff(full, subtractKeys map[string]json.RawMessage) map[string]json.RawMessage {
 	diff := map[string]json.RawMessage{}
 	for k, v := range full {
 		if _, ok := subtractKeys[k]; !ok {
@@ -111,6 +126,19 @@ func jsonDiff(full map[string]json.RawMessage, obj interface{}) map[string]json.
 		}
 	}
 	return diff
+}
+
+func isJSONObjectEmpty(obj map[string]json.RawMessage) bool {
+	for _, v := range obj {
+		var dst interface{}
+		if err := json.Unmarshal([]byte(v), &dst); err != nil {
+			return false
+		}
+		if !reflect.ValueOf(dst).IsZero() {
+			return false
+		}
+	}
+	return true
 }
 
 func dereference(i interface{}) interface{} {

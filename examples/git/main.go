@@ -19,7 +19,7 @@ func Prototype() prototype.Prototype {
 }
 
 func main() {
-	if err := Prototype().Run(); err != nil {
+	if err := Prototype().Execute(); err != nil {
 		panic(err)
 	}
 }

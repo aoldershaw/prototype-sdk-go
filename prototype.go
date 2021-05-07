@@ -32,90 +32,110 @@ func WithIcon(icon string) Option {
 	}
 }
 
-func (p Prototype) Run() error {
+func (p Prototype) Execute() error {
+	var responsePath string
+	var encode func(*json.Encoder) error
 	if len(os.Args) > 1 {
-		return p.invokeMessage(os.Args[1])
-	} else {
-		return p.runInfo()
-	}
-}
-
-func (p Prototype) invokeMessage(msg string) error {
-	var req MessageRequest
-	if err := json.NewDecoder(os.Stdin).Decode(&req); err != nil {
-		return fmt.Errorf("decode message request: %w", err)
-	}
-
-	invocations := decodePossibleInvocations(req.Object, p.objects, msg)
-	if len(invocations) == 0 {
-		return fmt.Errorf("no object satisfied payload")
-	}
-	if len(invocations) > 1 {
-		var satisfiableTypes []reflect.Type
-		for _, invocation := range invocations {
-			satisfiableTypes = append(satisfiableTypes, reflect.TypeOf(invocation.object))
+		var request struct {
+			MessageRequest
+			ResponsePath string `json:"response_path"`
 		}
-		return fmt.Errorf("object is ambiguous - satisfies types %v", satisfiableTypes)
+		if err := json.NewDecoder(os.Stdin).Decode(&request); err != nil {
+			return fmt.Errorf("invalid json request: %w", err)
+		}
+		responsePath = request.ResponsePath
+
+		message := os.Args[1]
+		responses, err := p.Run(message, request.MessageRequest)
+		if err != nil {
+			return fmt.Errorf("run %q: %w", message, err)
+		}
+		encode = func(encoder *json.Encoder) error {
+			for _, response := range responses {
+				if err := encoder.Encode(response); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	} else {
+		var request struct {
+			InfoRequest
+			ResponsePath string `json:"response_path"`
+		}
+		if err := json.NewDecoder(os.Stdin).Decode(&request); err != nil {
+			return fmt.Errorf("invalid json request: %w", err)
+		}
+		responsePath = request.ResponsePath
+
+		response, err := p.Info(request.InfoRequest)
+		if err != nil {
+			return fmt.Errorf("info: %w", err)
+		}
+		encode = func(encoder *json.Encoder) error {
+			return encoder.Encode(response)
+		}
 	}
 
-	responses, err := invocations[0].invoke()
-	if err != nil {
-		return fmt.Errorf("invoke message %q: %w", msg, err)
-	}
-
-	responseFile, err := os.OpenFile(req.ResponsePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	responseFile, err := os.OpenFile(responsePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		return fmt.Errorf("open response file: %w", err)
 	}
 	defer responseFile.Close()
 
 	encoder := json.NewEncoder(responseFile)
-	for _, response := range responses {
-		if err := encoder.Encode(response); err != nil {
-			return fmt.Errorf("write response: %w", err)
-		}
+	if err := encode(encoder); err != nil {
+		return fmt.Errorf("write response: %w", err)
 	}
+
 	return nil
 }
 
-func (p Prototype) runInfo() error {
-	var req InfoRequest
-	if err := json.NewDecoder(os.Stdin).Decode(&req); err != nil {
-		return fmt.Errorf("decode message request: %w", err)
+func (p Prototype) Run(message string, request MessageRequest) ([]MessageResponse, error) {
+	invocations, err := decodePossibleInvocations(request.Object, p.objects, message)
+	if err != nil {
+		return nil, err
+	}
+	if len(invocations) == 0 {
+		return nil, fmt.Errorf("no object satisfied payload")
+	}
+	if len(invocations) > 1 {
+		var satisfiableTypes []reflect.Type
+		for _, invocation := range invocations {
+			satisfiableTypes = append(satisfiableTypes, reflect.TypeOf(invocation.object))
+		}
+		return nil, fmt.Errorf("object is ambiguous - satisfies types %v", satisfiableTypes)
 	}
 
-	invocations := decodePossibleInvocations(req.Object, p.objects, "")
+	responses, err := invocations[0].invoke()
+	if err != nil {
+		return nil, fmt.Errorf("invoke: %w", err)
+	}
+	return responses, nil
+}
+
+func (p Prototype) Info(request InfoRequest) (InfoResponse, error) {
+	invocations, err := decodePossibleInvocations(request.Object, p.objects, "")
+	if err != nil {
+		return InfoResponse{}, err
+	}
 
 	messages := make([]string, len(invocations))
 	for i, invocation := range invocations {
 		messages[i] = invocation.name()
 	}
 
-	response := InfoResponse{
+	return InfoResponse{
 		InterfaceVersion: InterfaceVersion,
 		Icon:             p.Icon,
 		Messages:         messages,
-	}
-
-	responseFile, err := os.OpenFile(req.ResponsePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
-	if err != nil {
-		return fmt.Errorf("open response file: %w", err)
-	}
-	defer responseFile.Close()
-
-	if err := json.NewEncoder(responseFile).Encode(response); err != nil {
-		return fmt.Errorf("write response: %w", err)
-	}
-	return nil
+	}, nil
 }
 
 // InfoRequest is the payload written to stdin for the default CMD.
 type InfoRequest struct {
 	// The object to act on.
-	Object map[string]json.RawMessage `json:"object"`
-
-	// Path to a file into which the prototype must write its InfoResponse.
-	ResponsePath string `json:"response_path"`
+	Object map[string]interface{} `json:"object"`
 }
 
 // InfoResponse is the payload written to the `response_path` in response to an
@@ -137,10 +157,7 @@ type InfoResponse struct {
 // MessageRequest is the payload written to stdin for a message.
 type MessageRequest struct {
 	// The object to act on.
-	Object map[string]json.RawMessage `json:"object"`
-
-	// Path to a file into which the prototype must write its InfoResponse.
-	ResponsePath string `json:"response_path"`
+	Object map[string]interface{} `json:"object"`
 }
 
 // MessageResponse is written to the `response_path` for each object returned
